@@ -2,7 +2,7 @@
 
 ```txt
 .
-|- edusat.ino  # CanSatの制御プログラム
+|- demo.ino  # CanSatの制御プログラム
 |- obniz.html  # ObnizのHTMLプログラム
 ```
 
@@ -14,7 +14,7 @@
 
 # サンプルプログラムの説明
 
-## edusat.ino
+## demo.ino
 
 Arduino IDEで開きます。
 
