@@ -1,0 +1,46 @@
+<!-- 
+    このプログラムをObniz開発者コンソールの「アプリ開発」のプログラムにコピペする
+ -->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" />
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <script src="https://unpkg.com/obniz@3.x/obniz.js" crossorigin="anonymous" ></script>
+  </head>
+  <body>
+    <div id="obniz-debug">
+      <!-- テキストエリアを描画する -->
+      <div class="form-group col-sm-12">
+        <h4>Receive Messages</h4>
+        <textarea class="form-control" id="receivedText" rows="30" style="margin-bottom:10px;"></textarea>
+      </div>
+    </div>
+    <script>
+      var obniz = new Obniz("OBNIZ_ID_HERE");
+
+      // called on online
+      obniz.onconnect = async function() {
+        
+        // called while online.
+        obniz.onloop = async function() {
+          // データを受信したらテキストエリアに反映する
+          obniz.plugin.onreceive = function(data, text) {
+            console.log(text, data);
+            $('#receivedText').append(text);
+
+            // 自動スクロールする
+            var textarea = document.getElementById('receivedText');
+            textarea.scrollTop = textarea.scrollHeight;
+          }
+        };
+      };
+      
+      // called on offline
+      obniz.onclose = async function() {
+        
+      };
+    </script>
+  </body>
+</html>
