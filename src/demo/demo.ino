@@ -1,20 +1,22 @@
-#include "MPU9250.h"
+#include <TinyGPSPlus.h>
+#include <obniz.h>
+
 #include "FS.h"
+#include "MPU9250.h"
 #include "SD.h"
 #include "SPI.h"
-#include <obniz.h>
-#include <TinyGPSPlus.h>
 
-const float mC = 261.626; // ド
-const float mD = 293.665; // レ
-const float mE = 329.628; // ミ
-const float mF = 349.228; // ファ
-const float mG = 391.995; // ソ
-const float mA = 440.000; // ラ 
-const float mB = 493.883; // シ
+const float mC = 261.626;  // ド
+const float mD = 293.665;  // レ
+const float mE = 329.628;  // ミ
+const float mF = 349.228;  // ファ
+const float mG = 391.995;  // ソ
+const float mA = 440.000;  // ラ
+const float mB = 493.883;  // シ
 const float nn = 0.0;
 
-const float beep_wakeup[7] = {mE * 4, mA * 4, mB * 4, mA * 4, mE * 2, mE * 4, mB * 4}; // 起動音
+const float beep_wakeup[7] = {mE * 4, mA * 4, mB * 4, mA * 4,
+                              mE * 2, mE * 4, mB * 4};  // 起動音
 const float beep_start[3] = {mC * 2, mD * 2, mE * 2};
 const float beep_end[3] = {mE * 2, mD * 2, mC * 2};
 const float beep_error[5] = {mE * 4, mE * 4, mE * 4, mE * 4, mE * 4};
@@ -23,28 +25,28 @@ MPU9250 mpu;
 TinyGPSPlus gps;
 HardwareSerial hs(2);
 
-const uint8_t pin_sda        = 21;
-const uint8_t pin_scl        = 22;
-const uint8_t pin_button     = 35;
-const uint8_t pin_led        = 2;
-const uint8_t pin_heat       = 15;
-const uint8_t pin_speaker    = 12;
-const uint8_t pin_sd_miso    = 19;
-const uint8_t pin_sd_mosi    = 23;
-const uint8_t pin_sd_sclk    = 18;
-const uint8_t pin_sd_cs      = 5;
-const uint8_t pin_motor_A[3] = {4, 13, 25};  // AIN1, AIN2, PWMA
-const uint8_t pin_motor_B[3] = {14, 27, 26}; // BIN1, BIN2, PWMB
-const uint8_t pin_gps_tx     = 16;
-const uint8_t pin_gps_rx     = 17;
+const uint8_t pin_sda = 21;
+const uint8_t pin_scl = 22;
+const uint8_t pin_button = 35;
+const uint8_t pin_led = 2;
+const uint8_t pin_heat = 15;
+const uint8_t pin_speaker = 12;
+const uint8_t pin_sd_miso = 19;
+const uint8_t pin_sd_mosi = 23;
+const uint8_t pin_sd_sclk = 18;
+const uint8_t pin_sd_cs = 5;
+const uint8_t pin_motor_A[3] = {4, 13, 25};   // AIN1, AIN2, PWMA
+const uint8_t pin_motor_B[3] = {14, 27, 26};  // BIN1, BIN2, PWMB
+const uint8_t pin_gps_tx = 16;
+const uint8_t pin_gps_rx = 17;
 
-const int CHANNEL_A = 0; // PWMA
-const int CHANNEL_B = 1; // PWMB
-const int CHANNEL_C = 2; // Speaker
- 
-const int LEDC_TIMER_8_BIT    = 8;
-const int LEDC_TIMER_13_BIT   = 13;
-const int LEDC_BASE_FREQ_490  = 490;
+const int CHANNEL_A = 0;  // PWMA
+const int CHANNEL_B = 1;  // PWMB
+const int CHANNEL_C = 2;  // Speaker
+
+const int LEDC_TIMER_8_BIT = 8;
+const int LEDC_TIMER_13_BIT = 13;
+const int LEDC_BASE_FREQ_490 = 490;
 const int LEDC_BASE_FREQ_5000 = 490;
 
 volatile byte led_state = LOW;
@@ -60,9 +62,9 @@ struct SensorVal {
 
 /** CanSatの状態遷移用の列挙型 */
 enum {
-  ST_STAND_BY = 0, // 待機
-  ST_DRIVE,        // 目標地点へ走行
-  ST_GOAL,         // 目標地点に到着
+  ST_STAND_BY = 0,  // 待機
+  ST_DRIVE,         // 目標地点へ走行
+  ST_GOAL,          // 目標地点に到着
 };
 
 /** CanSatの状態遷移ステータス */
@@ -97,32 +99,31 @@ void setup() {
  * 繰り返し実行される
  */
 void loop() {
-  switch (state)
-  {
-  case ST_STAND_BY:
-    Serial.println("*** ST_STAND_BY ***");
-    stand_by();
-    break;
+  switch (state) {
+    case ST_STAND_BY:
+      Serial.println("*** ST_STAND_BY ***");
+      stand_by();
+      break;
 
-  case ST_DRIVE:
-    Serial.println("*** ST_DRIVE ***");
-    drive();
-    break;
+    case ST_DRIVE:
+      Serial.println("*** ST_DRIVE ***");
+      drive();
+      break;
 
-  case ST_GOAL:
-    Serial.println("*** ST_GOAL ***");
-    goal();
-    break;
-  
-  default:
-    break;
+    case ST_GOAL:
+      Serial.println("*** ST_GOAL ***");
+      goal();
+      break;
+
+    default:
+      break;
   }
   delay(200);
 }
 
 /** ボタンの割り込み関数 */
 void IRAM_ATTR onButton() {
-  if (millis() > interrupt_prev_ms + 500) { // チャタリング防止
+  if (millis() > interrupt_prev_ms + 500) {  // チャタリング防止
     led_state = !led_state;
     state = (state + 1) % 3;
     interrupt_prev_ms = millis();
@@ -156,15 +157,8 @@ void updateMPUValTask(void *pvParameters) {
  * マルチタスクで実行する関数（updateMPUValTask）の開始
  */
 void startUpdateMPUValTask() {
-  xTaskCreatePinnedToCore(
-    updateMPUValTask,
-    "updateMPUValTask",
-    8192,
-    NULL,
-    1,
-    &updateMPUValTaskHandle,
-    APP_CPU_NUM
-  );
+  xTaskCreatePinnedToCore(updateMPUValTask, "updateMPUValTask", 8192, NULL, 1,
+                          &updateMPUValTaskHandle, APP_CPU_NUM);
 }
 
 /**
@@ -193,15 +187,8 @@ void updateGPSValTask(void *pvParameters) {
  * マルチタスクで実行する関数（updateGPSValTask）の開始
  */
 void startUpdateGPSValTask() {
-  xTaskCreatePinnedToCore(
-    updateGPSValTask,
-    "updateGPSValTask",
-    8192,
-    NULL,
-    1,
-    &updateGPSValTaskHandle,
-    APP_CPU_NUM
-  );
+  xTaskCreatePinnedToCore(updateGPSValTask, "updateGPSValTask", 8192, NULL, 1,
+                          &updateGPSValTaskHandle, APP_CPU_NUM);
 }
 
 /**
@@ -214,7 +201,7 @@ void sendObnizTask(void *pvParameters) {
   xLastWakeTime = xTaskGetTickCount();
 
   while (1) {
-    char message[512]; // JavaScriptへ送信するメッセージ用
+    char message[512];  // JavaScriptへ送信するメッセージ用
     char roll_buf[16];
     char pitch_buf[16];
     char yaw_buf[16];
@@ -222,16 +209,14 @@ void sendObnizTask(void *pvParameters) {
     char lng_buf[16];
 
     if (obniz.isOnline()) {
-      dtostrf(sensorVal.roll, -1, 2, (char*)roll_buf);
-      dtostrf(sensorVal.pitch, -1, 2, (char*)pitch_buf);
-      dtostrf(sensorVal.yaw, -1, 2, (char*)yaw_buf);
-      dtostrf(sensorVal.lat, -1, 6, (char*)lat_buf);
-      dtostrf(sensorVal.lng, -1, 6, (char*)lng_buf);
-      sprintf(message, "%d,%s,%s,%s,%s,%s",
-        state,
-        roll_buf, pitch_buf, yaw_buf,
-        lat_buf, lng_buf);
-      obniz.commandSend((uint8_t*)message, strlen(message));
+      dtostrf(sensorVal.roll, -1, 2, (char *)roll_buf);
+      dtostrf(sensorVal.pitch, -1, 2, (char *)pitch_buf);
+      dtostrf(sensorVal.yaw, -1, 2, (char *)yaw_buf);
+      dtostrf(sensorVal.lat, -1, 6, (char *)lat_buf);
+      dtostrf(sensorVal.lng, -1, 6, (char *)lng_buf);
+      sprintf(message, "%d,%s,%s,%s,%s,%s", state, roll_buf, pitch_buf, yaw_buf,
+              lat_buf, lng_buf);
+      obniz.commandSend((uint8_t *)message, strlen(message));
     }
     delay(500);
   }
@@ -241,24 +226,15 @@ void sendObnizTask(void *pvParameters) {
  * マルチタスクで実行する関数（sendObnizTask）の開始
  */
 void startSendObnizTask() {
-  xTaskCreatePinnedToCore(
-    sendObnizTask,
-    "sendObnizTask",
-    8192,
-    NULL,
-    1,
-    &sendObnizTaskHandle,
-    APP_CPU_NUM
-  );
+  xTaskCreatePinnedToCore(sendObnizTask, "sendObnizTask", 8192, NULL, 1,
+                          &sendObnizTaskHandle, APP_CPU_NUM);
 }
 
 /** 待機状態 */
-void stand_by() {
-  digitalWrite(pin_led, led_state);
-}
+void stand_by() { digitalWrite(pin_led, led_state); }
 
 double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-  const double R = 6371; // 地球の半径（キロメートル）
+  const double R = 6371;  // 地球の半径（キロメートル）
 
   // 緯度・経度をラジアンに変換する
   double lat1_rad = radians(lat1);
@@ -269,21 +245,61 @@ double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
   // ヒュベニの公式を使って距離を計算する
   double dlat = lat2_rad - lat1_rad;
   double dlon = lon2_rad - lon1_rad;
-  double a = sin(dlat / 2) * sin(dlat / 2) + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2) * sin(dlon / 2);
+  double a = sin(dlat / 2) * sin(dlat / 2) +
+             cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2) * sin(dlon / 2);
   double c = 2 * atan2(sqrt(a), sqrt(1 - a));
   double distance = R * c;
 
-  return distance*1000;
+  return distance * 1000;
+}
+
+double calculateAzimuth(double lat1, double lon1, double lat2, double lon2) {
+  // 経度の差を求める
+  double dlon = lon2 - lon1;
+
+  // radianに変換する
+  double lat1_rad = radians(lat1);
+  double lat2_rad = radians(lat2);
+
+  // ラジアンへの変換
+  double y = sin(dlon) * cos(lat2_rad);
+  double x =
+      cos(lat1_rad) * sin(lat2_rad) - sin(lat1_rad) * cos(lat2_rad) * cos(dlon);
+
+  // atan2関数で逆三角関数を計算し、ラジアンから度に変換
+  double azimuth_rad = atan2(y, x);
+  double azimuth_deg = degrees(azimuth_rad);
+
+  if (azimuth_deg < 0) {
+    azimuth_deg += 360;
+  }
+
+  return azimuth_deg;
+}
+
+double calculateRelativeAngle(double azimuth, double currentAzimuth) {
+  // 相対的な角度を計算する
+  double relativeAngle = azimuth - currentAzimuth;
+
+  // 角度が±180°を超える場合は調整する
+  if (relativeAngle < -180) {
+    relativeAngle += 360;
+  } else if (relativeAngle > 180) {
+    relativeAngle -= 360;
+  }
+
+  return relativeAngle;
 }
 
 /** 目標地点へ走行 */
 void drive() {
   // 目標地点のGPS情報をハードコードする
-  double targetLatitude = 35.678057;  // 目標地点の緯度
+  // FIXME: 本番環境のものに書き換え
+  double targetLatitude = 35.678057;    // 目標地点の緯度
   double targetLongitude = 139.470158;  // 目標地点の経度
-  
+
   // 現在地点のGPS情報を取得する
-  double currentLatitude = gps.location.lat();  // 現在の緯度
+  double currentLatitude = gps.location.lat();   // 現在の緯度
   double currentLongitude = gps.location.lng();  // 現在の経度
 
   Serial.println("currentLatitude");
@@ -292,14 +308,33 @@ void drive() {
   Serial.println(currentLongitude);
 
   // 目標地点と現在地点の距離を計算する
-  double distance = calculateDistance(currentLatitude, currentLongitude, targetLatitude, targetLongitude);
+  double distance = calculateDistance(currentLatitude, currentLongitude,
+                                      targetLatitude, targetLongitude);
   Serial.println("distance");
   Serial.println(distance);
 
+  // 目標地点までの方位角（azimuth）を計算する
+  double azimuth = calculateAzimuth(currentLatitude, currentLongitude,
+                                    targetLatitude, targetLongitude);
+  Serial.println("azimuth");
+  Serial.println(azimuth);
 
-  // 目標地点までの距離と方向に基づいて制御ロジックを実装する
+  while (true) {
+    // TODO: 速度変える？
+    turnRight(255);
+    delay(200);
+    // 方位角（azimuth）をMPU9250のセンサーで読み取る
+    double currentAzimuth = mpu.getYaw();
+    // Serial.println("currentAzimuth");
+    // Serial.println(currentAzimuth);
+    double diffAngle = abs(azimuth - currentAzimuth);
+    char s[128];
+    sprintf(s, "current: %f | diff: %f", currentAzimuth, diffAngle);
+    Serial.println(s);
+    if (diffAngle <= 3) break;
+  }
+
   if (distance > 1) {
-    // 距離が10メートルよりも大きい場合は前進する
     forward(255);
     delay(5000);
   } else {
@@ -308,12 +343,12 @@ void drive() {
 }
 
 /** 目標地点に到着 */
-void goal() {
-}
+void goal() {}
 
 /** ObnizOSの初期化処理 */
 void obniz_init() {
-  obniz.start(NULL); // 引数にNULLを渡すとObnizOSのログがシリアルモニタに表示されなくなる
+  obniz.start(
+      NULL);  // 引数にNULLを渡すとObnizOSのログがシリアルモニタに表示されなくなる
   // IOの管理をobnizOSから外す
   obniz.pinReserve(pin_sda);
   obniz.pinReserve(pin_scl);
@@ -339,7 +374,7 @@ void pin_init() {
   attachInterrupt(pin_button, onButton, FALLING);
   pinMode(pin_led, OUTPUT);
   pinMode(pin_heat, OUTPUT);
-  digitalWrite(pin_heat, LOW); // 電熱線のピンはLOWにしておく
+  digitalWrite(pin_heat, LOW);  // 電熱線のピンはLOWにしておく
   pinMode(pin_speaker, OUTPUT);
   for (int i = 0; i < 3; i++) {
     pinMode(pin_motor_A[i], OUTPUT);
@@ -396,8 +431,8 @@ void mpu_init() {
     beep(beep_error, sizeof(beep_error) / sizeof(float), 100);
     return;
   }
-  mpu.setMagneticDeclination(-7.49); // 磁気偏角の設定（府中駅: -7.49）
-  mpu.selectFilter(QuatFilterSel::MADGWICK); // フィルターの設定
+  mpu.setMagneticDeclination(-7.49);  // 磁気偏角の設定（府中駅: -7.49）
+  mpu.selectFilter(QuatFilterSel::MADGWICK);  // フィルターの設定
   mpu.setFilterIterations(10);
 
   mpu.verbose(true);
@@ -422,9 +457,7 @@ void mpu_init() {
 }
 
 /** GPSセンサの初期化処理 */
-void gps_init() {
-  hs.begin(9600);
-}
+void gps_init() { hs.begin(9600); }
 
 /** 前進 */
 void forward(int pwm) {
@@ -463,13 +496,26 @@ void turnRight(int pwm) {
   if (pwm < 0) pwm = 0;
   if (pwm > 255) pwm = 255;
 
-  // 左モータ（CCW，反時計回り）
   digitalWrite(pin_motor_A[0], LOW);
   digitalWrite(pin_motor_A[1], HIGH);
   ledcWrite(CHANNEL_A, pwm);
 
   digitalWrite(pin_motor_B[0], LOW);
   digitalWrite(pin_motor_B[1], HIGH);
+  ledcWrite(CHANNEL_B, pwm);
+}
+
+/** 左回転 */
+void turnLeft(int pwm) {
+  if (pwm < 0) pwm = 0;
+  if (pwm > 255) pwm = 255;
+
+  digitalWrite(pin_motor_A[1], LOW);
+  digitalWrite(pin_motor_A[0], HIGH);
+  ledcWrite(CHANNEL_A, pwm);
+
+  digitalWrite(pin_motor_B[1], LOW);
+  digitalWrite(pin_motor_B[0], HIGH);
   ledcWrite(CHANNEL_B, pwm);
 }
 
@@ -487,7 +533,7 @@ void stop() {
 }
 
 /** SDカードに新規書き込みする */
- void writeFile(fs::FS &fs, const char *path, const char *message) {
+void writeFile(fs::FS &fs, const char *path, const char *message) {
   Serial.printf("Writing file: %s\n", path);
 
   File file = fs.open(path, FILE_WRITE);
@@ -536,6 +582,4 @@ void tone(int pin, int freq, int t_ms) {
   delay(t_ms);
 }
 
-void noTone(int pin) {
-  ledcWriteTone(CHANNEL_C, 0.0);
-}
+void noTone(int pin) { ledcWriteTone(CHANNEL_C, 0.0); }
