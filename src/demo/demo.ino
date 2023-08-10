@@ -300,6 +300,11 @@ double getAverageYaw() {
   return sum / 10;
 }
 
+void finishDrive() {
+  stop();
+  state = state + 1;
+}
+
 /** 目標地点へ走行 */
 void drive() {
   // FIXME: 本番環境のものに書き換え
@@ -335,24 +340,21 @@ void drive() {
   double rotationTime = (abs(relativeAngle) / 360) * 4.3; // 一回転にだいたい4.3秒かかる
   Serial.printf("rotationTime: %.6f\n", rotationTime);
 
-  if(rotationTime < 0.5) { // 適当な数字
-    stop();
-    return;
-  }
-
-  if (relativeAngle >= 0) {
-    turnRight(255);
-    delay(rotationTime * 1000);
-  } else {
-    turnLeft(255);
-    delay(rotationTime * 1000);
+  if(rotationTime > 0.5) { // 適当な数字
+    if (relativeAngle > 0) {
+      turnRight(255);
+      delay(rotationTime * 1000);
+    } else {
+      turnLeft(255);
+      delay(rotationTime * 1000);
+    }
   }
 
   if (distance > 2) { // 適当な数字
     forward(255);
     delay(5000);
   } else {
-    stop();
+    finishDrive();
   }
 }
 
