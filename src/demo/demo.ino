@@ -185,7 +185,7 @@ void updateGPSValTask(void *pvParameters) {
         sensorVal.lng = gps.location.lng();
       }
     }
-    delay(5000);
+    delay(1000);
   }
 }
 
@@ -257,16 +257,54 @@ void stand_by() {
   digitalWrite(pin_led, led_state);
 }
 
+double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  const double R = 6371; // 地球の半径（キロメートル）
+
+  // 緯度・経度をラジアンに変換する
+  double lat1_rad = radians(lat1);
+  double lon1_rad = radians(lon1);
+  double lat2_rad = radians(lat2);
+  double lon2_rad = radians(lon2);
+
+  // ヒュベニの公式を使って距離を計算する
+  double dlat = lat2_rad - lat1_rad;
+  double dlon = lon2_rad - lon1_rad;
+  double a = sin(dlat / 2) * sin(dlat / 2) + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2) * sin(dlon / 2);
+  double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+  double distance = R * c;
+
+  return distance*1000;
+}
+
 /** 目標地点へ走行 */
 void drive() {
-  forward(255);
-  delay(5000);
-  stop();
-  delay(2000);
-  back(100);
-  delay(5000);
-  stop();
-  delay(2000);
+  // 目標地点のGPS情報をハードコードする
+  double targetLatitude = 35.678057;  // 目標地点の緯度
+  double targetLongitude = 139.470158;  // 目標地点の経度
+  
+  // 現在地点のGPS情報を取得する
+  double currentLatitude = gps.location.lat();  // 現在の緯度
+  double currentLongitude = gps.location.lng();  // 現在の経度
+
+  Serial.println("currentLatitude");
+  Serial.println(currentLatitude);
+  Serial.println("currentLongitude");
+  Serial.println(currentLongitude);
+
+  // 目標地点と現在地点の距離を計算する
+  double distance = calculateDistance(currentLatitude, currentLongitude, targetLatitude, targetLongitude);
+  Serial.println("distance");
+  Serial.println(distance);
+
+
+  // 目標地点までの距離と方向に基づいて制御ロジックを実装する
+  if (distance > 1) {
+    // 距離が10メートルよりも大きい場合は前進する
+    forward(255);
+    delay(5000);
+  } else {
+    stop();
+  }
 }
 
 /** 目標地点に到着 */
@@ -415,6 +453,21 @@ void back(int pwm) {
   ledcWrite(CHANNEL_A, pwm);
 
   // 右モータ（CCW，反時計回り）
+  digitalWrite(pin_motor_B[0], LOW);
+  digitalWrite(pin_motor_B[1], HIGH);
+  ledcWrite(CHANNEL_B, pwm);
+}
+
+/** 右回転 */
+void turnRight(int pwm) {
+  if (pwm < 0) pwm = 0;
+  if (pwm > 255) pwm = 255;
+
+  // 左モータ（CCW，反時計回り）
+  digitalWrite(pin_motor_A[0], LOW);
+  digitalWrite(pin_motor_A[1], HIGH);
+  ledcWrite(CHANNEL_A, pwm);
+
   digitalWrite(pin_motor_B[0], LOW);
   digitalWrite(pin_motor_B[1], HIGH);
   ledcWrite(CHANNEL_B, pwm);
