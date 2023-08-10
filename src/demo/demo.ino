@@ -291,50 +291,64 @@ double calculateRelativeAngle(double azimuth, double currentAzimuth) {
   return relativeAngle;
 }
 
+double getAverageYaw() {
+  double sum = 0;
+  for (int i = 0; i < 10; i++) {
+    sum += mpu.getYaw();
+    delay(10);
+  }
+  return sum / 10;
+}
+
 /** 目標地点へ走行 */
 void drive() {
-  // 目標地点のGPS情報をハードコードする
   // FIXME: 本番環境のものに書き換え
-  double targetLatitude = 35.678057;    // 目標地点の緯度
-  double targetLongitude = 139.470158;  // 目標地点の経度
-
+  double targetLatitude = 35.677658;  // 目標地点の緯度
+  double targetLongitude = 139.469823;  // 目標地点の経度
+  
   // 現在地点のGPS情報を取得する
-  double currentLatitude = gps.location.lat();   // 現在の緯度
-  double currentLongitude = gps.location.lng();  // 現在の経度
+  double currentLatitude = gps.location.lat();
+  double currentLongitude = gps.location.lng();
 
-  Serial.println("currentLatitude");
-  Serial.println(currentLatitude);
-  Serial.println("currentLongitude");
-  Serial.println(currentLongitude);
+  Serial.printf("currentLatitude: %.6f\n", currentLatitude);
+  Serial.printf("currentLongitude: %.6f\n", currentLongitude);
 
   // 目標地点と現在地点の距離を計算する
   double distance = calculateDistance(currentLatitude, currentLongitude,
                                       targetLatitude, targetLongitude);
-  Serial.println("distance");
-  Serial.println(distance);
+  Serial.printf("distance: %.6f\n", distance);
 
-  // 目標地点までの方位角（azimuth）を計算する
+  // 目標地点までの方位角を計算する
   double azimuth = calculateAzimuth(currentLatitude, currentLongitude,
                                     targetLatitude, targetLongitude);
-  Serial.println("azimuth");
-  Serial.println(azimuth);
+  Serial.printf("azimuth: %.6f\n", azimuth);
 
-  while (true) {
-    // TODO: 速度変える？
-    turnRight(255);
-    delay(200);
-    // 方位角（azimuth）をMPU9250のセンサーで読み取る
-    double currentAzimuth = mpu.getYaw();
-    // Serial.println("currentAzimuth");
-    // Serial.println(currentAzimuth);
-    double diffAngle = abs(azimuth - currentAzimuth);
-    char s[128];
-    sprintf(s, "current: %f | diff: %f", currentAzimuth, diffAngle);
-    Serial.println(s);
-    if (diffAngle <= 3) break;
+  // 目標地点までの相対的な角度を計算する
+  double currentAzimuth = getAverageYaw();
+  Serial.println("currentAzimuth");
+  Serial.println(currentAzimuth);
+  double relativeAngle = calculateRelativeAngle(azimuth, currentAzimuth);
+  Serial.println("relativeAngle");
+  Serial.println(relativeAngle);
+
+  // 回転時間の計算
+  double rotationTime = (abs(relativeAngle) / 360) * 4.3; // 一回転にだいたい4.3秒かかる
+  Serial.printf("rotationTime: %.6f\n", rotationTime);
+
+  if(rotationTime < 0.5) { // 適当な数字
+    stop();
+    return;
   }
 
-  if (distance > 1) {
+  if (relativeAngle >= 0) {
+    turnRight(255);
+    delay(rotationTime * 1000);
+  } else {
+    turnLeft(255);
+    delay(rotationTime * 1000);
+  }
+
+  if (distance > 2) { // 適当な数字
     forward(255);
     delay(5000);
   } else {
