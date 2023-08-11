@@ -293,10 +293,21 @@ double calculateRelativeAngle(double azimuth, double currentAzimuth) {
 
 double getAverageYaw() {
   double sum = 0;
-  for (int i = 0; i < 10; i++) {
-    sum += mpu.getYaw();
-    delay(10);
+  double max = -1000;
+  double min = 1000;
+  for (int i = 0; i < 12; i++) {
+    double yaw = mpu.getYaw();
+    if (yaw > max) {
+      max = yaw;
+    }
+    if (yaw < min) {
+      min = yaw;
+    }
+    sum += yaw;
+    delay(100);
   }
+  sum -= max;
+  sum -= min;
   return sum / 10;
 }
 
@@ -308,8 +319,8 @@ void finishDrive() {
 /** 目標地点へ走行 */
 void drive() {
   // FIXME: 本番環境のものに書き換え
-  double targetLatitude = 35.677658;  // 目標地点の緯度
-  double targetLongitude = 139.469823;  // 目標地点の経度
+  double targetLatitude = 35.677039;  // 目標地点の緯度
+  double targetLongitude = 139.475214;  // 目標地点の経度
   
   // 現在地点のGPS情報を取得する
   double currentLatitude = gps.location.lat();
@@ -340,7 +351,7 @@ void drive() {
   double rotationTime = (abs(relativeAngle) / 360) * 4.3; // 一回転にだいたい4.3秒かかる
   Serial.printf("rotationTime: %.6f\n", rotationTime);
 
-  if(rotationTime > 0.5) { // 適当な数字
+  if(rotationTime > 0.4) { // 適当な数字
     if (relativeAngle > 0) {
       turnRight(255);
       delay(rotationTime * 1000);
@@ -350,7 +361,7 @@ void drive() {
     }
   }
 
-  if (distance > 2) { // 適当な数字
+  if (distance > 10) { // 適当な数字
     forward(255);
     delay(5000);
   } else {
